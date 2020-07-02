@@ -1,0 +1,34 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="container">
+    <div class="py-5 text-center">
+        <h2>Paypal Test Form</h2>
+        <p class="lead">目前僅可用於沙盒環境 (Sandbox Environment)</p>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 order-md-1">
+            <h4 class="mb-3">購買商品</h4>
+            <form class="needs-validation" novalidate>
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label for="lastName">儲存金額</label>
+                        <select class="form-control" id="price">
+                            <option value="1">USD 1</option>
+                            <option value="100">USD 100</option>
+                            <option value="500">USD 500</option>
+                            <option value="1000">USD 1000</option>
+                            <option value="5000">USD 5000</option>
+                        </select>
+                    </div>
+                </div>
+                <hr class="mb-4">
+                <div class="btn btn-primary btn-lg btn-block" id="paypal-button-container"></div>
+                <button class="btn btn-primary btn-lg btn-block send-btn" type="button">測試</button>
+            </form>
+        </div>
+    </div>
+</div>
+<script src="https://www.paypal.com/sdk/js?client-id=ARAl1J1ky754F97mmrR1dD1fTwd_UJ10sNZCoF9RVbfeA8_HqX0O8NfCZYYbUeFoDuxi2lh-VSdsW8pf&currency=USD&disable-funding=credit,card"></script>
