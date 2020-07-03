@@ -80,3 +80,21 @@ function setPaypal2() {
     });
 }
 sendPaypal2.addEventListener('click', setPaypal2);
+
+let sendPaypal3 = document.querySelector('.btnss');
+
+function setPaypal3() {
+    $.ajax({
+        type: "get",
+        url: "/home/paypaltopup",
+        dataType: "json",
+        success: function (result) {
+            console.log(result);
+            window.open(result.rel);
+        },
+        error: function () {
+            console.log('error')
+        }
+    });
+}
+sendPaypal3.addEventListener('click', setPaypal3);

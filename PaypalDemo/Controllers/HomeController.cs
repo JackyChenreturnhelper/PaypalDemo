@@ -65,6 +65,133 @@ namespace PaypalDemo.Controllers
         }
 
         [HttpGet]
+        [Route("[controller]/paypaltopup")]
+        public async Task<object> paypaltopup()
+        {
+            var token = await GetPaypalAccessToken();
+            var cus = _myDbContext.PaypalTokenId.Where(s => s.Email == "sb-iuunk2467458@personal.example.com").FirstOrDefault();
+            var agreementsUrl = "https://api.sandbox.paypal.com/v1/billing-agreements/agreements";
+
+            billingAgreementsResponse result = new billingAgreementsResponse();
+            if (string.IsNullOrWhiteSpace(cus.token_id))
+            {
+                return new Exception("no token_id");
+            }
+            else
+            {
+                Dictionary<string, string> getTokenAuthData = new Dictionary<string, string>();
+                getTokenAuthData.Add("Authorization", $"Bearer {token.accessToken}");
+                var uri = new Uri(agreementsUrl);
+
+                HttpRequestMessage httpRequestMessage = new HttpRequestMessage();
+                foreach (KeyValuePair<string, string> keyValuePair in getTokenAuthData ?? new Dictionary<string, string>())
+                    httpRequestMessage.Headers.Add(keyValuePair.Key, keyValuePair.Value);
+
+                httpRequestMessage.Method = HttpMethod.Post;
+                httpRequestMessage.RequestUri = uri;
+                BillingAgreementsRequest billingAgreementsRequest = new BillingAgreementsRequest();
+                billingAgreementsRequest.token_id = cus.token_id;
+                httpRequestMessage.Content = new StringContent(
+                      JsonConvert.SerializeObject(billingAgreementsRequest),
+                      Encoding.UTF8, "application/json");
+                HttpClient httpClient = new HttpClient();
+
+                var response = await httpClient.SendAsync(httpRequestMessage);
+                if (response.StatusCode != HttpStatusCode.Created)
+                {
+                    return new Exception("no token_id");
+                }
+                string jsonString = await response.Content.ReadAsStringAsync();
+                result = JsonConvert.DeserializeObject<billingAgreementsResponse>(jsonString);
+                await PaypalTopUp(result);
+            }
+
+            return result;
+        }
+
+        private async Task<PaymentResponse> PaypalTopUp(billingAgreementsResponse par)
+        {
+            var token = await GetPaypalAccessToken();
+            PaymentRequest paymentRequest = new PaymentRequest()
+            {
+                intent = "sale",
+                payer = new PaymentRequest.Payer()
+                {
+                    payment_method = "PAYPAL",
+                    funding_instruments = new List<PaymentRequest.Funding_Instruments>
+                    {
+                       new PaymentRequest.Funding_Instruments()
+                       {
+                           billing=new PaymentRequest.Billing()
+                           {
+                               billing_agreement_id=par.id
+                           }
+                       }
+                    }.ToArray()
+                },
+                transactions = new List<PaymentRequest.Transaction>()
+                {
+                    new PaymentRequest.Transaction()
+                    {
+                        amount  =new PaymentRequest.Amount()
+                        {
+                            currency="USD",
+                            total="3"
+                        },
+                        description="The balance is negative",
+                        item_list=new PaymentRequest.Item_List()
+                        {
+                            items=new List<PaymentRequest.Item>()
+                            {
+                                new PaymentRequest.Item()
+                                {
+                                    sku="Stored value",
+                                    name= "Stored value",
+                                    description= "The balance is negative",
+                                    quantity= "1",
+                                    price= "3.00",
+                                    currency= "USD",
+                                    tax= "0",
+                                    url= "https=//devusr.returnshelper.com/"
+                                }
+                            }.ToArray()
+                        },
+                    }
+                }.ToArray(),
+                redirect_urls = new PaymentRequest.Redirect_Urls()
+                {
+                    cancel_url = "https://devusr.returnshelper.com/",
+                    return_url = "https://devusr.returnshelper.com/",
+                }
+            };
+            Dictionary<string, string> getTokenAuthData = new Dictionary<string, string>();
+            getTokenAuthData.Add("Authorization", $"Bearer {token.accessToken}");
+            var uri = new Uri("https://api.sandbox.paypal.com/v1/payments/payment");
+            HttpRequestMessage httpRequestMessage = new HttpRequestMessage();
+            foreach (KeyValuePair<string, string> keyValuePair in getTokenAuthData ?? new Dictionary<string, string>())
+                httpRequestMessage.Headers.Add(keyValuePair.Key, keyValuePair.Value);
+
+            httpRequestMessage.Method = HttpMethod.Post;
+            httpRequestMessage.RequestUri = uri;
+
+            httpRequestMessage.Content = new StringContent(
+                  JsonConvert.SerializeObject(paymentRequest),
+                  Encoding.UTF8, "application/json");
+            HttpClient httpClient = new HttpClient();
+
+            var response = await httpClient.SendAsync(httpRequestMessage);
+            string jsonString = await response.Content.ReadAsStringAsync();
+            if (response.StatusCode != HttpStatusCode.Created)
+            {
+                new Exception("失敗");
+            }
+
+            var result = JsonConvert.DeserializeObject<PaymentResponse>(jsonString);
+
+            return result;
+        }
+
+        [HttpGet]
         [Route("[controller]/paypalapproval")]
         public async Task<LinkAgreement> paypalapproval()
         {
