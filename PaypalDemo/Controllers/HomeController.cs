@@ -20,6 +20,8 @@ using PaypalDemo.Models;
 using PaypalDemo.Models.Enum;
 using PaypalDemo.Models.test;
 using PaypalDemo.Models.test.DTO;
+using static PaypalDemo.Models.PaypalAgreementRequest;
+using Payer = PaypalDemo.Models.PaypalAgreementRequest.Payer;
 
 namespace PaypalDemo.Controllers
 {
@@ -60,6 +62,88 @@ namespace PaypalDemo.Controllers
         public IActionResult Error()
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+        }
+
+        [HttpGet]
+        [Route("[controller]/paypalapproval")]
+        public async Task<LinkAgreement> paypalapproval()
+        {
+            string baseurl = "";
+            try
+            {
+                var token = await GetPaypalAccessToken();
+                var cus = _myDbContext.PaypalTokenId.Where(s => s.Email == "sb-855xe2470314@personal.example.com").FirstOrDefault();
+
+                PaypalAgreement result = new PaypalAgreement();
+                if (string.IsNullOrWhiteSpace(cus.token_id))
+                {
+                    PaypalAgreementRequest paypalAgreementRequest = new PaypalAgreementRequest()
+                    {
+                        description = "The balance is negative",
+                        shipping_address = new Shipping_Address
+                        {
+                            line1 = "HK",
+                            city = "HK",
+                            state = "HK",
+                            postal_code = "95111",
+                            country_code = "HK",
+                            recipient_name = "ReturnHelper"
+                        },
+                        payer = new Payer
+                        {
+                            payment_method = "PAYPAL"
+                        },
+                        plan = new Plan
+                        {
+                            type = "MERCHANT_INITIATED_BILLING",
+                            merchant_preferences = new Merchant_Preferences()
+                            {
+                                accepted_pymt_type = "INSTANT",
+                                immutable_shipping_address = true,
+                                skip_shipping_address = false,
+                                cancel_url = "https://devusr.returnshelper.com/",
+                                return_url = "https://devusr.returnshelper.com/",
+                            }
+                        }
+                    };
+                    Dictionary<string, string> getTokenAuthData = new Dictionary<string, string>();
+                    getTokenAuthData.Add("Authorization", $"Bearer {token.accessToken}");
+                    var uri = new Uri($"https://api.sandbox.paypal.com/v1/billing-agreements/agreement-tokens");
+
+                    HttpRequestMessage httpRequestMessage = new HttpRequestMessage();
+                    foreach (KeyValuePair<string, string> keyValuePair in getTokenAuthData ?? new Dictionary<string, string>())
+                        httpRequestMessage.Headers.Add(keyValuePair.Key, keyValuePair.Value);
+
+                    httpRequestMessage.Method = HttpMethod.Post;
+                    httpRequestMessage.RequestUri = uri;
+
+                    httpRequestMessage.Content = new StringContent(
+                       JsonConvert.SerializeObject(paypalAgreementRequest),
+                       Encoding.UTF8, "application/json");
+                    HttpClient httpClient = new HttpClient();
+
+                    var response = await httpClient.SendAsync(httpRequestMessage);
+                    string jsonString = await response.Content.ReadAsStringAsync();
+
+                    result = JsonConvert.DeserializeObject<PaypalAgreement>(jsonString);
+                    cus.token_id = result.token_id;
+                    _myDbContext.Entry(cus).CurrentValues.SetValues(cus);
+                    _myDbContext.SaveChanges();
+                    baseurl = result.links.Where(s => s.rel == "approval_url").FirstOrDefault().href;
+                }
+                else
+                {
+                    baseurl = $@"https://www.sandbox.paypal.com/agreements/approve?ba_token={cus.token_id}";
+                }
+            }
+            catch (Exception ex)
+            {
+                var aa = ex.ToString();
+            }
+            LinkAgreement linkAgreement = new LinkAgreement();
+            linkAgreement.rel = baseurl;
+
+            return linkAgreement;
         }
 
         [HttpPost]

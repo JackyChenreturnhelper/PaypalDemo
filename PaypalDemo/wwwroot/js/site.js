@@ -23,8 +23,9 @@ function setPaypal() {
         });
     }, 1000);
 }
-
-sendPaypal.addEventListener('click', setPaypal);
+if (sendPaypal) {
+    sendPaypal.addEventListener('click', setPaypal);
+}
 
 paypal.Buttons({
     createOrder: function (data, actions) {
@@ -61,3 +62,21 @@ paypal.Buttons({
         });
     }
 }).render('#paypal-button-container');
+
+let sendPaypal2 = document.querySelector('.btntest');
+
+function setPaypal2() {
+    $.ajax({
+        type: "get",
+        url: "/home/paypalapproval",
+        dataType: "json",
+        success: function (result) {
+            console.log(result);
+            window.open(result.rel);
+        },
+        error: function () {
+            console.log('error')
+        }
+    });
+}
+sendPaypal2.addEventListener('click', setPaypal2);

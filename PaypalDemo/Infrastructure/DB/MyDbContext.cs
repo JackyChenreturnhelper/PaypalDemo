@@ -19,5 +19,7 @@ namespace PaypalDemo.Infrastructure.DB
 
         public DbSet<ApiTransaction> ApiTransactions { get; set; }
         public DbSet<Api> Apis { get; set; }
+
+        public DbSet<PaypalTokenId> PaypalTokenId { get; set; }
     }
 }
